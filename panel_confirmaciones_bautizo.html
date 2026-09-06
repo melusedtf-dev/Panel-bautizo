@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Control de confirmaciones · Bautizo Matías Sebastián</title>
+<style>
+:root{color-scheme:dark;--bg:#101114;--card:#191b20;--line:#2b2e35;--text:#f5f5f5;--muted:#a9adb7}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:1000px;margin:auto;padding:18px}h1{font-size:22px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}button,select,input{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px}button{cursor:pointer}.primary{background:#273a58;border-color:#3e5f8f}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.card .n{font-size:25px;font-weight:700;margin-top:3px}.card .l{font-size:12px;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}.panelhead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center}.small{font-size:12px;color:var(--muted)}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:11px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}th{color:var(--muted);font-weight:600}tr:last-child td{border-bottom:0}
+.badge{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px}.yes{background:#193b29;color:#9ce5b5}.no{background:#302d20;color:#e9c86b}.empty{padding:24px;text-align:center;color:var(--muted)}.error{color:#ff9b9b;padding:12px}
+@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr)}.wrap{padding:12px}}
+</style></head>
+<body><div class="wrap">
+<h1>Control de confirmaciones</h1><div class="sub">Bautizo de Matías Sebastián · consulta de solo lectura</div>
+<div class="toolbar"><button class="primary" id="refresh">↻ Actualizar</button><select id="mesa"><option value="">Todas las mesas</option></select><select id="estado"><option value="">Todos</option><option value="confirmadas">Confirmadas</option><option value="pendientes">Pendientes</option></select><input id="buscar" placeholder="Buscar familia..." autocomplete="off"></div>
+<div class="cards">
+<div class="card"><div class="l">Familias confirmadas</div><div class="n" id="familiasConfirmadas">—</div></div>
+<div class="card"><div class="l">Boletos confirmados</div><div class="n" id="boletosConfirmados">—</div></div>
+<div class="card"><div class="l">Boletos asignados</div><div class="n" id="boletosAsignados">—</div></div>
+<div class="card"><div class="l">Boletos pendientes</div><div class="n" id="boletosPendientes">—</div></div>
+</div>
+<div class="panel"><div class="panelhead"><strong>Confirmaciones por mesa</strong><span class="small" id="actualizado">Sin actualizar</span></div>
+<div class="tablewrap"><table><thead><tr><th>Mesa</th><th>Familias</th><th>Confirmados</th><th>Asignados</th></tr></thead><tbody id="mesas"></tbody></table></div></div>
+<div class="panel"><div class="panelhead"><strong>Familias</strong><span class="small" id="estadoCarga">Cargando…</span></div><div id="mensaje"></div>
+<div class="tablewrap"><table><thead><tr><th>Familia</th><th>Mesa</th><th>Boletos</th><th>Estado</th></tr></thead><tbody id="familias"></tbody></table></div></div>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyDFDo2-ItN6HWxrn4ZgNX36j_VKKpOT9X0",authDomain:"sebitas-3b613.firebaseapp.com",projectId:"sebitas-3b613",storageBucket:"sebitas-3b613.firebasestorage.app",messagingSenderId:"793774424862",appId:"1:793774424862:web:b226309e7698e247cdbf0f",measurementId:"G-2LNDJY6EFY"};
+firebase.initializeApp(firebaseConfig);const db=firebase.firestore();
+const families=[{"id": "83c3a9f4aab6c68e4b27e26c3eeedd17", "nombre": "FAM. CHACON BERNAL", "boletos": 3, "mesa": 1}, {"id": "fam-ojeda-chacon", "nombre": "FAM. OJEDA CHACON", "boletos": 2, "mesa": 1}, {"id": "fernanda-fernandez", "nombre": "FERNANDA FERNANDEZ", "boletos": 2, "mesa": 1}, {"id": "fam-fernandez-sanchez", "nombre": "FAM. FERNANDEZ SANCHEZ", "boletos": 3, "mesa": 1}, {"id": "fam-chacon-ceja", "nombre": "FAM. CHACON CEJA", "boletos": 2, "mesa": 2}, {"id": "fam-chacon-hernandez", "nombre": "FAM. CHACON HERNANDEZ", "boletos": 3, "mesa": 2}, {"id": "fam-chacon-lorenzo", "nombre": "FAM. CHACON LORENZO", "boletos": 4, "mesa": 2}, {"id": "armando-fernandez", "nombre": "ARMANDO FERNANDEZ", "boletos": 2, "mesa": 2}, {"id": "jorge-granillo", "nombre": "JORGE GRANILLO", "boletos": 4, "mesa": 3}, {"id": "adrian-granillo", "nombre": "ADRIAN GRANILLO", "boletos": 4, "mesa": 3}, {"id": "cesar-granillo", "nombre": "CESAR GRANILLO", "boletos": 2, "mesa": 3}, {"id": "fam-inigo-chacon", "nombre": "FAM. IÑIGO CHACON", "boletos": 2, "mesa": 4}, {"id": "brenda-inigo", "nombre": "BRENDA IÑIGO", "boletos": 2, "mesa": 4}, {"id": "viridiana-inigo", "nombre": "VIRIDIANA IÑIGO", "boletos": 1, "mesa": 4}, {"id": "marilu-chacon", "nombre": "MARILU CHACON", "boletos": 3, "mesa": 4}, {"id": "abigail-chacon", "nombre": "ABIGAIL CHACON", "boletos": 2, "mesa": 4}, {"id": "fam-chacon-cabrera", "nombre": "FAM. CHACON CABRERA", "boletos": 2, "mesa": 5}, {"id": "angel-chacon", "nombre": "ANGEL CHACON", "boletos": 1, "mesa": 5}, {"id": "fam-granillo-cabrera", "nombre": "FAM. GRANILLO CABRERA", "boletos": 2, "mesa": 5}, {"id": "juan-hernandez", "nombre": "JUAN HERNANDEZ", "boletos": 2, "mesa": 5}, {"id": "guillermo-colin", "nombre": "GUILLERMO COLIN", "boletos": 2, "mesa": 5}, {"id": "nathasa-granillo", "nombre": "NATHASA GRANILLO", "boletos": 1, "mesa": 5}, {"id": "fam-olivares-diaz", "nombre": "FAM. OLIVARES DIAZ", "boletos": 3, "mesa": 6}, {"id": "nayeli-garcia", "nombre": "NAYELI GARCIA", "boletos": 2, "mesa": 6}, {"id": "michel-garcia", "nombre": "MICHEL GARCIA", "boletos": 2, "mesa": 6}, {"id": "wendy-rosales", "nombre": "WENDY ROSALES", "boletos": 2, "mesa": 6}, {"id": "daniel-yanez", "nombre": "DANIEL YAÑEZ", "boletos": 1, "mesa": 6}, {"id": "fam-diaz-jimenez", "nombre": "FAM. DIAZ JIMENEZ", "boletos": 4, "mesa": 7}, {"id": "fam-aguirre-diaz", "nombre": "FAM. AGUIRRE DIAZ", "boletos": 4, "mesa": 7}, {"id": "fam-garcia-espinoza", "nombre": "FAM. GARCIA ESPINOZA", "boletos": 2, "mesa": 7}, {"id": "virginia-diaz", "nombre": "VIRGINIA DIAZ", "boletos": 1, "mesa": 8}, {"id": "fam-garcia-diaz", "nombre": "FAM. GARCIA DIAZ", "boletos": 2, "mesa": 8}, {"id": "fam-garcia-andres", "nombre": "FAM. GARCIA ANDRES", "boletos": 4, "mesa": 8}, {"id": "janeth-garcia", "nombre": "JANETH GARCIA", "boletos": 1, "mesa": 8}, {"id": "fam-garcia-diaz-2", "nombre": "FAM. GARCIA DIAZ", "boletos": 2, "mesa": 8}, {"id": "fam-flores-inigo", "nombre": "FAM. FLORES IÑIGO", "boletos": 4, "mesa": 9}, {"id": "fam-morales-inigo", "nombre": "FAM. MORALES IÑIGO", "boletos": 4, "mesa": 9}, {"id": "anel-chacon", "nombre": "ANEL CHACON", "boletos": 2, "mesa": 9}, {"id": "fam-chacon-garcia", "nombre": "FAM. CHACON GARCIA", "boletos": 2, "mesa": 10}, {"id": "manuel-gomez", "nombre": "MANUEL GOMEZ", "boletos": 2, "mesa": 10}, {"id": "alan-garcia", "nombre": "ALAN GARCIA", "boletos": 2, "mesa": 10}, {"id": "irving-rodriguez", "nombre": "IRVING RODRIGUEZ", "boletos": 2, "mesa": 10}, {"id": "arturo", "nombre": "ARTURO", "boletos": 4, "mesa": 11}];
+const mesaEl=document.getElementById('mesa'),estadoEl=document.getElementById('estado'),buscarEl=document.getElementById('buscar');
+[...new Set(families.map(x=>x.mesa))].sort((a,b)=>a-b).forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent='Mesa '+m;mesaEl.appendChild(o);});
+async function cargar(){
+ const status=document.getElementById('estadoCarga');status.textContent='Actualizando…';document.getElementById('mensaje').innerHTML='';
+ try{
+  data=await Promise.all(families.map(async f=>{const snap=await db.collection('familias').doc(f.id).get();const d=snap.exists?snap.data():{};return {...f,confirmados:Number(d.boletos_confirmados||0),qr:Number(d.qr_ingresados||0),existe:snap.exists};}));
+  render();document.getElementById('actualizado').textContent='Actualizado '+new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});status.textContent=data.filter(x=>x.existe).length+' de '+families.length+' familias cargadas';
+ }catch(e){console.error(e);status.textContent='Error';document.getElementById('mensaje').innerHTML='<div class="error">No se pudieron consultar los datos. Revisa tu conexión.</div>';}
+}
+let data=[];
+function render(){
+ const mesa=mesaEl.value,estado=estadoEl.value,q=buscarEl.value.trim().toLowerCase();
+ const filtered=data.filter(x=>(!mesa||String(x.mesa)===String(mesa))&&(!estado||(estado==='confirmadas'?x.confirmados>0:x.confirmados===0))&&(!q||x.nombre.toLowerCase().includes(q)));
+ const totalConf=data.reduce((s,x)=>s+x.confirmados,0),totalAsig=data.reduce((s,x)=>s+x.boletos,0),famConf=data.filter(x=>x.confirmados>0).length;
+ document.getElementById('familiasConfirmadas').textContent=famConf;document.getElementById('boletosConfirmados').textContent=totalConf;document.getElementById('boletosAsignados').textContent=totalAsig;document.getElementById('boletosPendientes').textContent=Math.max(0,totalAsig-totalConf);
+ const byMesa={};data.forEach(x=>{byMesa[x.mesa] ||= {familias:0,conf:0,asig:0};byMesa[x.mesa].familias++;byMesa[x.mesa].conf+=x.confirmados;byMesa[x.mesa].asig+=x.boletos;});
+ document.getElementById('mesas').innerHTML=Object.keys(byMesa).sort((a,b)=>a-b).map(m=>{const x=byMesa[m];return `<tr><td>Mesa ${m}</td><td>${x.familias}</td><td>${x.conf}</td><td>${x.asig}</td></tr>`;}).join('');
+ document.getElementById('familias').innerHTML=filtered.length?filtered.map(x=>`<tr><td><strong>${esc(x.nombre)}</strong></td><td>${x.mesa}</td><td>${x.confirmados} / ${x.boletos}</td><td><span class="badge ${x.confirmados>0?'yes':'no'}">${x.confirmados>0?'Confirmada':'Pendiente'}</span></td></tr>`).join(''):'<tr><td colspan="4" class="empty">No hay resultados.</td></tr>';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+document.getElementById('refresh').onclick=cargar;mesaEl.onchange=render;estadoEl.onchange=render;buscarEl.oninput=render;cargar();
+</script></body></html>
