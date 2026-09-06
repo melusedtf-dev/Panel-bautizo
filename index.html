@@ -47,7 +47,7 @@ label{font-size:12px;color:var(--muted)}
 label input{width:100%;margin-top:5px}
 .full{grid-column:1/-1}
 @media(max-width:850px){.cards{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:520px){.wrap{padding:12px}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+@media(max-width:520px){.wrap{padding:12px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.toolbar button,.toolbar input,.toolbar select{width:100%}}
 </style>
 </head>
 <body>
@@ -67,6 +67,7 @@ label input{width:100%;margin-top:5px}
 
   <div class="toolbar">
     <button class="primary" id="refresh" type="button">↻ Actualizar</button>
+    <button class="primary" id="addBtn" type="button">➕ Agregar familia</button>
     <input id="buscar" placeholder="Buscar familia..." autocomplete="off">
     <select id="mesa"><option value="">Todas las mesas</option></select>
     <select id="estado">
@@ -146,13 +147,16 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const families = [{"id":"83c3a9f4aab6c68e4b27e26c3eeedd17","nombre":"FAM. CHACON BERNAL","boletos":3,"mesa":1},{"id":"fam-ojeda-chacon","nombre":"FAM. OJEDA CHACON","boletos":2,"mesa":1},{"id":"fernanda-fernandez","nombre":"FERNANDA FERNANDEZ","boletos":2,"mesa":1},{"id":"fam-fernandez-sanchez","nombre":"FAM. FERNANDEZ SANCHEZ","boletos":3,"mesa":1},{"id":"fam-chacon-ceja","nombre":"FAM. CHACON CEJA","boletos":2,"mesa":2},{"id":"fam-chacon-hernandez","nombre":"FAM. CHACON HERNANDEZ","boletos":3,"mesa":2},{"id":"fam-chacon-lorenzo","nombre":"FAM. CHACON LORENZO","boletos":4,"mesa":2},{"id":"armando-fernandez","nombre":"ARMANDO FERNANDEZ","boletos":2,"mesa":2},{"id":"jorge-granillo","nombre":"JORGE GRANILLO","boletos":4,"mesa":3},{"id":"adrian-granillo","nombre":"ADRIAN GRANILLO","boletos":4,"mesa":3},{"id":"cesar-granillo","nombre":"CESAR GRANILLO","boletos":2,"mesa":3},{"id":"fam-inigo-chacon","nombre":"FAM. IÑIGO CHACON","boletos":2,"mesa":4},{"id":"brenda-inigo","nombre":"BRENDA IÑIGO","boletos":2,"mesa":4},{"id":"viridiana-inigo","nombre":"VIRIDIANA IÑIGO","boletos":1,"mesa":4},{"id":"marilu-chacon","nombre":"MARILU CHACON","boletos":3,"mesa":4},{"id":"abigail-chacon","nombre":"ABIGAIL CHACON","boletos":2,"mesa":4},{"id":"fam-chacon-cabrera","nombre":"FAM. CHACON CABRERA","boletos":2,"mesa":5},{"id":"angel-chacon","nombre":"ANGEL CHACON","boletos":1,"mesa":5},{"id":"fam-granillo-cabrera","nombre":"FAM. GRANILLO CABRERA","boletos":2,"mesa":5},{"id":"juan-hernandez","nombre":"JUAN HERNANDEZ","boletos":2,"mesa":5},{"id":"guillermo-colin","nombre":"GUILLERMO COLIN","boletos":2,"mesa":5},{"id":"nathasa-granillo","nombre":"NATHASA GRANILLO","boletos":1,"mesa":5},{"id":"fam-olivares-diaz","nombre":"FAM. OLIVARES DIAZ","boletos":3,"mesa":6},{"id":"nayeli-garcia","nombre":"NAYELI GARCIA","boletos":2,"mesa":6},{"id":"michel-garcia","nombre":"MICHEL GARCIA","boletos":2,"mesa":6},{"id":"wendy-rosales","nombre":"WENDY ROSALES","boletos":2,"mesa":6},{"id":"daniel-yanez","nombre":"DANIEL YAÑEZ","boletos":1,"mesa":6},{"id":"fam-diaz-jimenez","nombre":"FAM. DIAZ JIMENEZ","boletos":4,"mesa":7},{"id":"fam-aguirre-diaz","nombre":"FAM. AGUIRRE DIAZ","boletos":4,"mesa":7},{"id":"fam-garcia-espinoza","nombre":"FAM. GARCIA ESPINOZA","boletos":2,"mesa":7},{"id":"virginia-diaz","nombre":"VIRGINIA DIAZ","boletos":1,"mesa":8},{"id":"fam-garcia-diaz","nombre":"FAM. GARCIA DIAZ","boletos":2,"mesa":8},{"id":"fam-garcia-andres","nombre":"FAM. GARCIA ANDRES","boletos":4,"mesa":8},{"id":"janeth-garcia","nombre":"JANETH GARCIA","boletos":1,"mesa":8},{"id":"fam-garcia-diaz-2","nombre":"FAM. GARCIA DIAZ","boletos":2,"mesa":8},{"id":"fam-flores-inigo","nombre":"FAM. FLORES IÑIGO","boletos":4,"mesa":9},{"id":"fam-morales-inigo","nombre":"FAM. MORALES IÑIGO","boletos":4,"mesa":9},{"id":"anel-chacon","nombre":"ANEL CHACON","boletos":2,"mesa":9},{"id":"fam-chacon-garcia","nombre":"FAM. CHACON GARCIA","boletos":2,"mesa":10},{"id":"manuel-gomez","nombre":"MANUEL GOMEZ","boletos":2,"mesa":10},{"id":"alan-garcia","nombre":"ALAN GARCIA","boletos":2,"mesa":10},{"id":"irving-rodriguez","nombre":"IRVING RODRIGUEZ","boletos":2,"mesa":10},{"id":"arturo","nombre":"ARTURO","boletos":4,"mesa":11},{"id":"familia-jeronimo-chacon","nombre":"FAMILIA JERÓNIMO CHACÓN","boletos":3,"mesa":12},{"id":"jorge-jeronimo","nombre":"JORGE JERÓNIMO","boletos":2,"mesa":10}];
-
 let data = [];
 let selected = null;
+let creating = false;
+
+const ADMIN_EMAIL = "luischacon929@gmail.com";
+const INV_BASE = "https://bautizo-matias-sebastian.netlify.app/familia/";
 
 const $ = (id) => document.getElementById(id);
 
@@ -164,6 +168,7 @@ const loginBtn = $("loginBtn");
 const loginMsg = $("loginMsg");
 const logout = $("logout");
 const refresh = $("refresh");
+const addBtn = $("addBtn");
 const buscar = $("buscar");
 const mesa = $("mesa");
 const estado = $("estado");
@@ -177,6 +182,7 @@ const mesas = $("mesas");
 const estadoCarga = $("estadoCarga");
 const msg = $("msg");
 const modal = $("modal");
+const modalTitle = $("modalTitle");
 const modalMsg = $("modalMsg");
 const fNombre = $("fNombre");
 const fMesa = $("fMesa");
@@ -189,25 +195,31 @@ const resetBtn = $("resetBtn");
 const cancelBtn = $("cancelBtn");
 
 auth.onAuthStateChanged((user) => {
-  if (user) {
+  if (user && (user.email || "").toLowerCase() === ADMIN_EMAIL) {
     loginView.classList.add("hidden");
     app.classList.remove("hidden");
     cargar();
   } else {
+    if (user) auth.signOut();
     app.classList.add("hidden");
     loginView.classList.remove("hidden");
   }
 });
 
 loginBtn.addEventListener("click", iniciarSesion);
+password.addEventListener("keydown", (e) => { if (e.key === "Enter") iniciarSesion(); });
+email.addEventListener("keydown", (e) => { if (e.key === "Enter") password.focus(); });
+logout.addEventListener("click", () => auth.signOut());
 
-password.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") iniciarSesion();
-});
-
-email.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") password.focus();
-});
+refresh.addEventListener("click", cargar);
+addBtn.addEventListener("click", abrirNuevo);
+buscar.addEventListener("input", render);
+mesa.addEventListener("change", render);
+estado.addEventListener("change", render);
+cancelBtn.addEventListener("click", cerrar);
+copyBtn.addEventListener("click", () => { if (selected) copiar(selected.id); });
+resetBtn.addEventListener("click", reiniciarConfirmacion);
+saveBtn.addEventListener("click", guardar);
 
 async function iniciarSesion() {
   const correo = email.value.trim();
@@ -232,48 +244,33 @@ async function iniciarSesion() {
   }
 }
 
-logout.addEventListener("click", () => auth.signOut());
-
-refresh.addEventListener("click", cargar);
-buscar.addEventListener("input", render);
-mesa.addEventListener("change", render);
-estado.addEventListener("change", render);
-
-cancelBtn.addEventListener("click", cerrar);
-
-copyBtn.addEventListener("click", () => {
-  if (selected) copiar(selected.id);
-});
-
-saveBtn.addEventListener("click", guardar);
-
-resetBtn.addEventListener("click", reiniciarConfirmacion);
-
 async function cargar() {
   estadoCarga.textContent = "Actualizando…";
 
   try {
-    data = await Promise.all(
-      families.map(async (f) => {
-        const snap = await db.collection("familias").doc(f.id).get();
-        const d = snap.exists ? snap.data() : {};
+    // Las familias se leen directamente de Firestore.
+    const snap = await db.collection("familias").get();
 
-        return {
-          ...f,
-          confirmados: Number(d.boletos_confirmados || 0),
-          qr: Number(d.qr_ingresados || 0),
-          existe: snap.exists
-        };
-      })
-    );
+    data = snap.docs.map((doc) => {
+      const d = doc.data() || {};
+      return {
+        id: doc.id,
+        nombre: String(d.nombre || ""),
+        mesa: Number(d.mesa || 0),
+        boletos: Number(d.boletos_asignados || 0),
+        confirmados: Number(d.boletos_confirmados || 0),
+        qr: Number(d.qr_ingresados || 0),
+        qr_usado: Boolean(d.qr_usado)
+      };
+    }).sort((a,b) => a.mesa - b.mesa || a.nombre.localeCompare(b.nombre, "es"));
 
     llenarFiltroMesas();
     render();
-    estadoCarga.textContent = data.filter(x => x.existe).length + " familias cargadas";
+    estadoCarga.textContent = data.length + " familias cargadas";
   } catch (e) {
     console.error(e);
     estadoCarga.textContent = "Error";
-    showMsg("No se pudieron consultar los datos: " + e.message, "error");
+    showMsg("No se pudieron consultar las familias: " + e.message, "error");
   }
 }
 
@@ -306,7 +303,6 @@ function render() {
   boletosIngresados.textContent = data.reduce((s,x) => s + x.qr, 0);
 
   const by = {};
-
   data.forEach(x => {
     if (!by[x.mesa]) by[x.mesa] = {f:0,b:0,c:0,q:0};
     by[x.mesa].f++;
@@ -315,10 +311,10 @@ function render() {
     by[x.mesa].q += x.qr;
   });
 
-  mesas.innerHTML = Object.keys(by)
-    .sort((a,b) => Number(a)-Number(b))
-    .map(m => '<tr><td>Mesa ' + m + '</td><td>' + by[m].f + '</td><td>' + by[m].b + '</td><td>' + by[m].c + '</td><td>' + by[m].q + '</td></tr>')
-    .join("");
+  mesas.innerHTML = Object.keys(by).sort((a,b) => Number(a)-Number(b)).map(m =>
+    '<tr><td>Mesa ' + m + '</td><td>' + by[m].f + '</td><td>' + by[m].b +
+    '</td><td>' + by[m].c + '</td><td>' + by[m].q + '</td></tr>'
+  ).join("");
 
   familias.innerHTML = filtradas.map(x => `
     <tr>
@@ -330,52 +326,90 @@ function render() {
       <td><span class="badge ${x.confirmados > 0 ? "yes" : "no"}">${x.confirmados > 0 ? "Confirmada" : "Pendiente"}</span></td>
       <td>
         <div class="actions">
-          <button type="button" data-edit="${x.id}">✏️ Editar</button>
-          <button type="button" data-link="${x.id}">🔗 Link</button>
+          <button type="button" data-edit="${escAttr(x.id)}">✏️ Editar</button>
+          <button type="button" data-link="${escAttr(x.id)}">🔗 Link</button>
+          <button type="button" data-delete="${escAttr(x.id)}">🗑️ Eliminar</button>
         </div>
       </td>
     </tr>
   `).join("") || '<tr><td colspan="7">No hay resultados.</td></tr>';
 
-  familias.querySelectorAll("[data-edit]").forEach(btn => {
-    btn.addEventListener("click", () => editar(btn.dataset.edit));
-  });
-
-  familias.querySelectorAll("[data-link]").forEach(btn => {
-    btn.addEventListener("click", () => copiar(btn.dataset.link));
-  });
+  familias.querySelectorAll("[data-edit]").forEach(btn =>
+    btn.addEventListener("click", () => editar(btn.dataset.edit))
+  );
+  familias.querySelectorAll("[data-link]").forEach(btn =>
+    btn.addEventListener("click", () => copiar(btn.dataset.link))
+  );
+  familias.querySelectorAll("[data-delete]").forEach(btn =>
+    btn.addEventListener("click", () => eliminar(btn.dataset.delete))
+  );
 }
 
 function esc(s) {
-  return String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+  return String(s).replace(/[&<>"']/g, m =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])
+  );
+}
+
+function escAttr(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/"/g, "&quot;");
 }
 
 function showMsg(text, cls) {
   msg.className = cls || "";
   msg.textContent = text;
-  setTimeout(() => { msg.textContent = ""; }, 3500);
+  setTimeout(() => { msg.textContent = ""; }, 4000);
+}
+
+function abrirNuevo() {
+  creating = true;
+  selected = null;
+  modalTitle.textContent = "Agregar familia";
+  fNombre.value = "";
+  fMesa.value = "";
+  fBoletos.value = "";
+  fConfirmados.value = "0";
+  fQr.value = "0";
+  fConfirmados.disabled = false;
+
+  copyBtn.classList.add("hidden");
+  resetBtn.classList.add("hidden");
+  modalMsg.textContent = "";
+  saveBtn.textContent = "Crear familia";
+  modal.classList.remove("hidden");
+  fNombre.focus();
 }
 
 function editar(id) {
   selected = data.find(x => x.id === id);
   if (!selected) return;
 
+  creating = false;
+  modalTitle.textContent = "Editar familia";
   fNombre.value = selected.nombre;
   fMesa.value = selected.mesa;
   fBoletos.value = selected.boletos;
   fConfirmados.value = selected.confirmados;
   fQr.value = selected.qr;
+  fConfirmados.disabled = false;
+
+  copyBtn.classList.remove("hidden");
+  resetBtn.classList.remove("hidden");
   modalMsg.textContent = "";
+  saveBtn.textContent = "Guardar";
   modal.classList.remove("hidden");
 }
 
 function cerrar() {
   modal.classList.add("hidden");
   selected = null;
+  creating = false;
+  copyBtn.classList.remove("hidden");
+  resetBtn.classList.remove("hidden");
 }
 
 async function copiar(id) {
-  const link = "https://bautizo-matias-sebastian.netlify.app/familia/" + id + "/";
+  const link = INV_BASE + id + "/";
 
   try {
     await navigator.clipboard.writeText(link);
@@ -385,33 +419,75 @@ async function copiar(id) {
   }
 }
 
-async function guardar() {
-  if (!selected) return;
+function generarQrToken() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+}
 
+function slugBase(nombre) {
+  let s = String(nombre).normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return s || "familia";
+}
+
+async function crearFamilia(nombre, m, b, c) {
+  const base = slugBase(nombre);
+  let id = base;
+  let n = 2;
+
+  while ((await db.collection("familias").doc(id).get()).exists) {
+    id = base + "-" + n++;
+  }
+
+  await db.collection("familias").doc(id).set({
+    nombre,
+    boletos_asignados: b,
+    boletos_confirmados: c,
+    mesa: m,
+    qr_ingresados: 0,
+    qr_token: generarQrToken(),
+    qr_usado: false,
+    token: id
+  });
+
+  return id;
+}
+
+async function guardar() {
   const nombre = fNombre.value.trim();
   const m = Number(fMesa.value);
   const b = Number(fBoletos.value);
   const c = Number(fConfirmados.value);
 
-  if (!nombre || m < 1 || b < 1 || c < 0 || c > b || selected.qr > c) {
-    modalMsg.textContent = "Revisa los datos. Los confirmados no pueden superar los boletos ni ser menores que los ingresados.";
+  if (!nombre || m < 1 || b < 1 || c < 0 || c > b || (!creating && selected && selected.qr > c)) {
+    modalMsg.textContent = "Revisa los datos. Los valores deben ser válidos y los confirmados no pueden superar los boletos ni ser menores que los ingresados.";
     return;
   }
 
   saveBtn.disabled = true;
-  modalMsg.textContent = "Guardando…";
+  modalMsg.textContent = creating ? "Creando familia…" : "Guardando…";
 
   try {
-    await db.collection("familias").doc(selected.id).update({
-      nombre,
-      mesa: m,
-      boletos_asignados: b,
-      boletos_confirmados: c
-    });
+    if (creating) {
+      const id = await crearFamilia(nombre, m, b, c);
+      cerrar();
+      showMsg("Familia creada correctamente.", "success");
+      await cargar();
 
-    cerrar();
-    showMsg("Cambios guardados.", "success");
-    await cargar();
+      // Abrir inmediatamente la familia recién creada para copiar su link.
+      editar(id);
+    } else {
+      await db.collection("familias").doc(selected.id).update({
+        nombre,
+        mesa: m,
+        boletos_asignados: b,
+        boletos_confirmados: c
+      });
+
+      cerrar();
+      showMsg("Cambios guardados.", "success");
+      await cargar();
+    }
   } catch (e) {
     console.error(e);
     modalMsg.textContent = "No se pudo guardar: " + e.message;
@@ -423,7 +499,7 @@ async function guardar() {
 async function reiniciarConfirmacion() {
   if (!selected) return;
 
-  if (!confirm("¿Reiniciar confirmación de " + selected.nombre + "?")) return;
+  if (!confirm("¿Reiniciar confirmación de " + selected.nombre + "? Esto pondrá confirmados e ingresados en 0.")) return;
 
   resetBtn.disabled = true;
   modalMsg.textContent = "Reiniciando…";
@@ -445,6 +521,27 @@ async function reiniciarConfirmacion() {
     resetBtn.disabled = false;
   }
 }
+
+async function eliminar(id) {
+  const x = data.find(a => a.id === id);
+  if (!x) return;
+
+  const texto = x.confirmados > 0 || x.qr > 0
+    ? "¿Eliminar definitivamente a " + x.nombre + "?\\n\\nEsta familia ya tiene actividad registrada (" + x.confirmados + " confirmados / " + x.qr + " ingresados). Su enlace dejará de funcionar.\\n\\nEsta acción NO se puede deshacer."
+    : "¿Eliminar definitivamente a " + x.nombre + "?\\n\\nSu enlace dejará de funcionar. Esta acción NO se puede deshacer.";
+
+  if (!confirm(texto)) return;
+
+  try {
+    await db.collection("familias").doc(id).delete();
+    showMsg("Familia eliminada.", "success");
+    await cargar();
+  } catch (e) {
+    console.error(e);
+    showMsg("No se pudo eliminar: " + e.message, "error");
+  }
+}
+
 </script>
 </body>
 </html>
